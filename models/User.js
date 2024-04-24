@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
     city: { type: String, default: '' },
     isEmpty: { type: String, default: false }
   }
-}, {timeseries: true});
+}, { timestamps: true });
 
 
 const User = mongoose.model('User', userSchema);
