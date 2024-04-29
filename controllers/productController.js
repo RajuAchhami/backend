@@ -1,38 +1,34 @@
 import Product from "../models/Product.js";
-
-
+import mongoose from "mongoose";
+import fs from "fs";
 
 export const getTopProducts = (req, res, next) => {
   req.query = { rating: { $gt: 4 } };
   req.query.limit = 5;
   next();
-}
-
+};
 
 export const getAllProducts = async (req, res) => {
   const queryObj = { ...req.query };
-  const excludeFields = ['sort', 'page', 'fields', 'search', 'limit'];
+  const excludeFields = ["sort", "page", "fields", "search", "limit"];
   excludeFields.forEach((val) => delete queryObj[val]);
 
   try {
-
     if (req.query.search) {
-      queryObj.product_name = { $regex: req.query.search, $options: 'i' }
+      queryObj.product_name = { $regex: req.query.search, $options: "i" };
     }
 
     let query = Product.find(queryObj);
 
     if (req.query.fields) {
-      const selectFields = req.query.fields.split(',').join('');
+      const selectFields = req.query.fields.split(",").join("");
       query = query.select(selectFields);
     }
 
     if (req.query.sort) {
-      const sorts = req.query.sort.split(',').join('');
+      const sorts = req.query.sort.split(",").join("");
       query = query.sort(sorts);
     }
-
-
 
     const page = req.query.page || 1;
     const limit = req.query.limit || 10;
@@ -45,30 +41,75 @@ export const getAllProducts = async (req, res) => {
 
     const count = await Product.countDocuments(query);
     return res.status(200).json({
-      status: 'success',
+      status: "success",
       products: data,
-      count
+      count,
     });
   } catch (err) {
     return res.status(400).json({
-      status: 'error',
-      message: `${err}`
+      status: "error",
+      message: `${err}`,
     });
   }
-}
+};
 
+export const getProductById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (mongoose.isValidObjectId(id)) {
+      const data = await Product.findById(id);
+      if (!data) return res.status(404).json({ message: "data not found" });
+      return res.status(200).json({
+        status: "success",
+        data: data,
+      });
+    } else {
+      return res.status(400).json({
+        status: "error",
+        message: "please provide valid id",
+      });
+    }
+  } catch (err) {
+    return res.status(400).json({
+      status: "error",
+      message: `${err}`,
+    });
+  }
+};
 
 export const addProduct = async (req, res) => {
+  const {
+    product_name,
+    product_detail,
+    product_price,
+    brand,
+    category,
+    countInStock,
+  } = req.body;
+
   try {
-    // const data = await Product.find({});
+    const data = await Product.create({
+      product_name,
+      product_detail,
+      brand,
+      category,
+      countInStock,
+      product_price,
+      product_image: req.imagePath,
+    });
     return res.status(200).json({
-      status: 'success',
-      message: 'product added successfully'
+      status: "success",
+      message: "product added successfully",
     });
   } catch (err) {
+    if (err.code !== 11000) {
+      fs.unlink(`.${req.imagePath}`, (err) => console.log(err));
+    }
+
     return res.status(400).json({
-      status: 'error',
-      message: `${err}`
+      status: "error",
+      message: `${err}`,
     });
   }
-}
+};
